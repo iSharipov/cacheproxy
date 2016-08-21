@@ -2,6 +2,7 @@ package com.isharipov.proxy;
 
 import com.isharipov.Result;
 import com.isharipov.annotation.Cache;
+import com.isharipov.util.UtilHelper;
 
 import java.io.File;
 import java.lang.annotation.Annotation;
@@ -32,15 +33,6 @@ public class CacheProxy implements InvocationHandler {
                 new CacheProxy(object));
     }
 
-    public static void main(String[] args) {
-        Class[] classes = {String.class, Object.class};
-        Class[] classe2 = {String.class};
-
-        String s = Arrays.toString(classes).replace("[", "").replace("]", "").trim();
-        String s2 = Arrays.toString(classe2).replace("[", "").replace("]", "").trim();
-        System.out.println(s.contains(s2));
-    }
-
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
 
@@ -67,10 +59,23 @@ public class CacheProxy implements InvocationHandler {
                         return res.get(identitiesKey);
                     }
                 } else {
-                    String fileName = annotation.fileNamePrefix().isEmpty() ? method.getName() : annotation.fileNamePrefix();
+                    String fileNameKey = annotation.fileNamePrefix().isEmpty() ? method.getName() : annotation.fileNamePrefix();
+                    String fileName = fileNameKey + identitiesKey;
                     if (annotation.zip()) {
-                        File file = new File(fileName + ".zip");
-                        file.exists();
+                        File[] files = new File(System.getProperty("user.dir")).listFiles();
+                        if (files != null) {
+                            File first = Arrays.stream(files).filter(f -> fileName.contains(f.getName())).findFirst().orElse(null);
+                            if (first != null) {
+                                return UtilHelper.getResult(UtilHelper.decompress(first.getName()));
+                            } else {
+                                Map<String, Double> res = new HashMap<>();
+                                res.put(fileName, (Double) invoke(method, args));
+                                UtilHelper.compress(UtilHelper.serialize(new Result(res), fileName).getName());
+                                return res.get(fileName);
+                            }
+                        }
+                    } else {
+
                     }
                 }
             }
